@@ -1,0 +1,11 @@
+# Terraform State and Caches
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Secrets (Snowflake Private Keys)
+terraform.tfvars
+
+# Packaging Artifacts
+*.zip
