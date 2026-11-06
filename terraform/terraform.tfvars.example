@@ -1,0 +1,8 @@
+aws_region                 = "ap-south-1"
+s3_bucket_name             = "usecases-de"
+sns_alert_email            = "kristina.maskarenkhas@diactoventures.com"
+snowflake_account          = "RBOCUUL-KQB54092"
+snowflake_user             = "KRISTINA"
+snowflake_role             = "RSA"
+snowflake_warehouse        = "COMPUTE_WH"
+snowflake_private_key_path = "rsa_key.p8"

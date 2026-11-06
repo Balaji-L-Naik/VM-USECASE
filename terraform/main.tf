@@ -1,13 +1,35 @@
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
-    aws     = { source = "hashicorp/aws", version = "~> 5.0" }
-    archive = { source = "hashicorp/archive", version = "~> 2.4" }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
+    snowflake = {
+      source  = "Snowflake-Labs/snowflake"
+      version = "~> 0.87.0"
+    }
   }
 }
 
+# ------------------------------------------------------------------------------
+# Provider Configurations
+# ------------------------------------------------------------------------------
 provider "aws" {
   region = var.aws_region
+}
+
+provider "snowflake" {
+  account       = var.snowflake_account
+  user          = var.snowflake_user
+  role          = var.snowflake_role
+  warehouse     = var.snowflake_warehouse
+  authenticator = "JWT"
+  private_key   = replace(file(var.snowflake_private_key_path), "\r\n", "\n")
 }
 
 # ------------------------------------------------------------------------------
@@ -23,7 +45,7 @@ resource "aws_secretsmanager_secret_version" "snowflake_credentials_val" {
   secret_string = jsonencode({
     account     = var.snowflake_account
     user        = var.snowflake_user
-    private_key = var.snowflake_private_key
+    private_key = file(var.snowflake_private_key_path)
   })
 }
 
@@ -201,4 +223,44 @@ resource "aws_sfn_state_machine" "pipeline" {
       }
     }
   })
+}
+
+# ------------------------------------------------------------------------------
+# 6. AWS IAM Role & Policy for Snowflake S3 Storage Integration
+# ------------------------------------------------------------------------------
+resource "aws_iam_role" "snowflake_s3_role" {
+  name = "vardhan_snowflake_s3_ingestion_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { AWS = "*" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "snowflake_s3_policy" {
+  name = "vardhan_snowflake_s3_ingestion_policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:GetObjectVersion"]
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "snowflake_s3_attach" {
+  role       = aws_iam_role.snowflake_s3_role.name
+  policy_arn = aws_iam_policy.snowflake_s3_policy.arn
 }

@@ -1,6 +1,6 @@
 variable "aws_region" {
   type    = string
-  default = "us-east-1"
+  default = "ap-south-1"
 }
 
 variable "s3_bucket_name" {
@@ -14,16 +14,39 @@ variable "sns_alert_email" {
 }
 
 variable "snowflake_account" {
-  type      = string
-  sensitive = true
+  type = string
 }
 
 variable "snowflake_user" {
+  type = string
+}
+
+variable "snowflake_role" {
   type    = string
-  default = "kristina"
+  default = "RSA"
+}
+
+variable "snowflake_warehouse" {
+  type    = string
+  default = "COMPUTE_WH"
+}
+
+variable "snowflake_database" {
+  type    = string
+  default = "VARDHAN_POS_DB"
+}
+
+variable "snowflake_schema" {
+  type    = string
+  default = "VARDHAN_BRONZE"
+}
+
+variable "snowflake_private_key_path" {
+  type    = string
+  default = "rsa_key.p8"
 }
 
 variable "snowflake_private_key" {
-  type      = string
-  sensitive = true
+  type    = string
+  default = ""
 }
