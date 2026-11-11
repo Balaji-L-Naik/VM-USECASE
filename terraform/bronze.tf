@@ -2,48 +2,67 @@ locals {
   stage_fqn = "${snowflake_database.pos_db.name}.${snowflake_schema.staging.name}.${snowflake_stage.s3_pos_stage.name}"
   fmt_fqn   = "${snowflake_database.pos_db.name}.${snowflake_schema.staging.name}.${snowflake_file_format.csv_format.name}"
 
-  # Column lists, in the same order as the CSV files
+  # Column lists in the exact order matching source raw CSV files
   bronze_tables = {
     VARDHAN_POS_SALES_RAW = [
       "STORE_ID", "BILL_NO", "LINE_NO", "BILL_TS", "SKU", "MEDICINE_NAME",
       "BATCH_NO", "EXPIRY_DATE", "QTY", "MRP", "UNIT_PRICE", "DISCOUNT_PCT"
     ]
+    VARDHAN_POS_STOCK_RAW = [
+      "STORE_ID", "SKU", "BATCH_NO", "EXPIRY_DATE", "CLOSING_STOCK_QTY", "SNAPSHOT_DATE"
+    ]
     VARDHAN_REF_STORE_MASTER_RAW = [
       "STORE_ID", "STORE_NAME", "CITY", "AREA", "AREA_MANAGER",
       "MANAGER_SINCE", "IS_24H", "OPENED_ON"
     ]
-    VARDHAN_REF_MEDICINE_MASTER_RAW = ["SKU", "MEDICINE_NAME", "SCHEDULE", "MANUFACTURER"]
+    VARDHAN_REF_MEDICINE_MASTER_RAW      = ["SKU", "MEDICINE_NAME", "SCHEDULE", "MANUFACTURER"]
+    VARDHAN_REF_MEDICINE_CORRECTIONS_RAW = ["INCORRECT_NAME", "CORRECTED_NAME"]
   }
 
   csv_loads = {
     pos_history = {
       table   = "VARDHAN_POS_SALES_RAW"
       path    = "data/pos_history/"
-      pattern = ".*/VM[0-9]+_20.*[.]csv[.]gz"
+      pattern = ".*VM[0-9]+_20.*[.]csv[.]gz"
+      enabled = false # Enable manually for historical backfills
     }
     pos_daily_drops = {
       table   = "VARDHAN_POS_SALES_RAW"
       path    = "data/pos_daily_drops/"
-      pattern = ".*/VM[0-9]+_20.*[.]csv[.]gz" # excludes VMxxx_stock_ files
+      pattern = ".*VM[0-9]+_20[0-9]{2}-[0-9]{2}-[0-9]{2}[.]csv[.]gz" # Strictly matches sales drops
+      enabled = true
+    }
+    pos_stock = {
+      table   = "VARDHAN_POS_STOCK_RAW"
+      path    = "data/pos_daily_drops/"
+      pattern = ".*_stock_.*[.]csv[.]gz" # Captures daily compressed stock files
+      enabled = true
     }
     store_master = {
       table   = "VARDHAN_REF_STORE_MASTER_RAW"
       path    = "data/reference/store_master/"
       pattern = ".*store_master_.*[.]csv"
+      enabled = true
     }
     medicine_master = {
       table   = "VARDHAN_REF_MEDICINE_MASTER_RAW"
       path    = "data/reference/"
       pattern = ".*medicine_master[.]csv"
+      enabled = true
+    }
+    medicine_corrections = {
+      table   = "VARDHAN_REF_MEDICINE_CORRECTIONS_RAW"
+      path    = "data/reference/"
+      pattern = ".*medicine_name_corrections[.]csv"
+      enabled = true
     }
   }
 }
 
-# NOTE: EXECUTE TASK on the account must be granted once in SQL by ACCOUNTADMIN:
+# NOTE: EXECUTE TASK on account level must be granted in SQL by ACCOUNTADMIN:
 #   GRANT EXECUTE TASK ON ACCOUNT TO ROLE RSA;
-#   GRANT EXECUTE TASK ON ACCOUNT TO ROLE VARDHAN_DATA_ENGINEER_ROLE;
 
-# CSV load tasks
+# CSV load tasks for all Bronze target tables
 resource "snowflake_task" "csv_load" {
   for_each             = local.csv_loads
   database             = snowflake_database.pos_db.name
@@ -51,7 +70,7 @@ resource "snowflake_task" "csv_load" {
   name                 = upper("LOAD_${each.key}")
   warehouse            = snowflake_warehouse.compute_wh.name
   schedule             = "60 MINUTE"
-  enabled              = true
+  enabled              = each.value.enabled
   user_task_timeout_ms = 10800000
 
   sql_statement = <<-EOT
@@ -69,8 +88,10 @@ resource "snowflake_task" "csv_load" {
 
   depends_on = [
     snowflake_table.pos_sales_raw,
+    snowflake_table.pos_stock_raw,
     snowflake_table.ref_store_master_raw,
     snowflake_table.ref_medicine_master_raw,
+    snowflake_table.medicine_corrections_raw,
   ]
 }
 

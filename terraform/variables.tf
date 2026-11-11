@@ -50,3 +50,18 @@ variable "snowflake_private_key" {
   type    = string
   default = ""
 }
+
+# ==============================================================================
+# ADDED: Medicine Corrections Infrastructure Variables
+# ==============================================================================
+variable "snowflake_medicine_corrections_table" {
+  type        = string
+  description = "Raw landing table for medicine name typo corrections"
+  default     = "VARDHAN_MEDICINE_CORRECTIONS_RAW"
+}
+
+variable "s3_medicine_corrections_path" {
+  type        = string
+  description = "S3 stage relative path for medicine corrections CSV"
+  default     = "data/reference/medicine_name_corrections.csv"
+}

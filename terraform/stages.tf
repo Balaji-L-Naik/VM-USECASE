@@ -9,7 +9,7 @@ resource "snowflake_storage_integration" "s3_integration" {
 
   enabled                   = true
   storage_provider          = "S3"
-  storage_aws_role_arn      = aws_iam_role.snowflake_s3_role.arn
+  storage_aws_role_arn      = local.snowflake_s3_role_arn # string, not the role resource (breaks the cycle)
   storage_allowed_locations = ["s3://${var.s3_bucket_name}/"]
 }
 
@@ -19,11 +19,11 @@ resource "snowflake_file_format" "csv_format" {
   schema      = snowflake_schema.staging.name
   format_type = "CSV"
 
-  field_delimiter                 = ","
-  skip_header                     = 1
-  field_optionally_enclosed_by    = "\""
-  null_if                         = ["NULL", "null", ""]
-  empty_field_as_null             = true
+  field_delimiter                = ","
+  skip_header                    = 1
+  field_optionally_enclosed_by   = "\""
+  null_if                        = ["NULL", "null", ""]
+  empty_field_as_null            = true
   error_on_column_count_mismatch = false
 }
 

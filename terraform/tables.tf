@@ -72,50 +72,51 @@ resource "snowflake_table" "pos_sales_raw" {
   }
 }
 
-# UNCHANGED for now: needs rebuilding once I see the real stock file header
 resource "snowflake_table" "pos_stock_raw" {
   database = snowflake_database.pos_db.name
   schema   = snowflake_schema.bronze.name
   name     = "VARDHAN_POS_STOCK_RAW"
 
   column {
-    name     = "STORE_ID"
-    type     = "VARCHAR(32)"
-    nullable = true
+    name = "STORE_ID"
+    type = "VARCHAR"
   }
   column {
-    name     = "SKU_CODE"
-    type     = "VARCHAR(64)"
-    nullable = true
+    name = "SKU"
+    type = "VARCHAR"
   }
   column {
-    name     = "CLOSING_STOCK_QTY"
-    type     = "NUMBER(38,0)"
-    nullable = true
+    name = "BATCH_NO"
+    type = "VARCHAR"
   }
   column {
-    name     = "BATCH_NO"
-    type     = "VARCHAR(64)"
-    nullable = true
+    name = "EXPIRY_DATE"
+    type = "VARCHAR"
   }
   column {
-    name     = "EXPIRY_DATE"
-    type     = "DATE"
-    nullable = true
+    name = "CLOSING_STOCK_QTY"
+    type = "VARCHAR"
   }
   column {
-    name     = "SNAPSHOT_DATE"
-    type     = "DATE"
-    nullable = true
+    name = "SNAPSHOT_DATE"
+    type = "VARCHAR"
   }
   column {
-    name     = "INGESTED_AT"
-    type     = "TIMESTAMP_NTZ(9)"
-    nullable = true
+    name = "SOURCE_FILE"
+    type = "VARCHAR"
+  }
+  column {
+    name = "SOURCE_ROW_NUMBER"
+    type = "NUMBER(38,0)"
+  }
+  column {
+    name = "INGESTED_AT"
+    type = "TIMESTAMP_NTZ(9)"
+    default {
+      expression = "CURRENT_TIMESTAMP()"
+    }
   }
 }
-
-# Distributor API returns JSON pages, so store each page as VARIANT
 resource "snowflake_table" "distributor_raw" {
   database = snowflake_database.pos_db.name
   schema   = snowflake_schema.bronze.name
@@ -211,6 +212,36 @@ resource "snowflake_table" "ref_medicine_master_raw" {
   }
   column {
     name = "MANUFACTURER"
+    type = "VARCHAR"
+  }
+  column {
+    name = "SOURCE_FILE"
+    type = "VARCHAR"
+  }
+  column {
+    name = "SOURCE_ROW_NUMBER"
+    type = "NUMBER(38,0)"
+  }
+  column {
+    name = "INGESTED_AT"
+    type = "TIMESTAMP_NTZ(9)"
+    default {
+      expression = "CURRENT_TIMESTAMP()"
+    }
+  }
+}
+
+resource "snowflake_table" "medicine_corrections_raw" {
+  database = snowflake_database.pos_db.name
+  schema   = snowflake_schema.bronze.name
+  name     = "VARDHAN_REF_MEDICINE_CORRECTIONS_RAW"
+
+  column {
+    name = "INCORRECT_NAME"
+    type = "VARCHAR"
+  }
+  column {
+    name = "CORRECTED_NAME"
     type = "VARCHAR"
   }
   column {

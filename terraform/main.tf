@@ -227,16 +227,31 @@ resource "aws_sfn_state_machine" "pipeline" {
 
 # ------------------------------------------------------------------------------
 # 6. AWS IAM Role & Policy for Snowflake S3 Storage Integration
+#    The trust policy is locked to Snowflake's IAM user + external ID.
+#    The integration (stages.tf) uses local.snowflake_s3_role_arn (a plain
+#    string), so there is no circular dependency.
 # ------------------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+locals {
+  snowflake_s3_role_name = "vardhan_snowflake_s3_ingestion_role"
+  snowflake_s3_role_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.snowflake_s3_role_name}"
+}
+
 resource "aws_iam_role" "snowflake_s3_role" {
-  name = "vardhan_snowflake_s3_ingestion_role"
+  name = local.snowflake_s3_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { AWS = "*" }
       Action    = "sts:AssumeRole"
+      Principal = { AWS = snowflake_storage_integration.s3_integration.storage_aws_iam_user_arn }
+      Condition = {
+        StringEquals = {
+          "sts:ExternalId" = snowflake_storage_integration.s3_integration.storage_aws_external_id
+        }
+      }
     }]
   })
 }
@@ -253,7 +268,7 @@ resource "aws_iam_policy" "snowflake_s3_policy" {
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
+        Action   = ["s3:ListBucket", "s3:GetBucketLocation"]
         Resource = "arn:aws:s3:::${var.s3_bucket_name}"
       }
     ]
