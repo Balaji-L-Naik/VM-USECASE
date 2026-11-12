@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: vardhan_distributor_silver
+    columns:
+      - name: DISTRIBUTOR_STOCK_HASH_KEY
+        tests:
+          - unique
+          - not_null
+
+  - name: vardhan_pos_stock_silver
+    description: "Silver layer stock snapshots deduplicated by store, sku, and date."
+    columns:
+      - name: STOCK_HASH_KEY
+        tests:
+          - unique
+          - not_null
+
+  - name: vardhan_ref_medicine_master_silver
+    description: "Silver layer medicine master reference table with pass-through lineage."
+    columns:
+      - name: MEDICINE_HASH_KEY
+        tests:
+          - unique
+          - not_null
+
+  - name: vardhan_ref_store_master_silver
+    description: "Silver layer store master reference table."
+    columns:
+      - name: STORE_HASH_KEY
+        tests:
+          - unique
+          - not_null
+      - name: STORE_ID
+        tests:
+          - unique
+          - not_null
+
+  - name: vardhan_pos_sales_silver
+    description: "Silver layer transaction line items deduplicated by transaction line key."
+    columns:
+      - name: SALES_HASH_KEY
+        tests:
+          - unique
+          - not_null
+      - name: STORE_ID
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('vardhan_ref_store_master_silver')
+                field: STORE_ID

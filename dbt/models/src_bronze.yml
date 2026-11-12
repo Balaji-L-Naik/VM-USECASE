@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: VARDHAN_BRONZE
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'VARDHAN_POS_DB') }}"
+    schema: VARDHAN_BRONZE
+    tables:
+      - name: VARDHAN_POS_SALES_RAW
+      - name: VARDHAN_POS_STOCK_RAW
+      - name: VARDHAN_DISTRIBUTOR_RAW
+      - name: VARDHAN_REF_STORE_MASTER_RAW
+      - name: VARDHAN_REF_MEDICINE_MASTER_RAW
+      - name: VARDHAN_REF_MEDICINE_CORRECTIONS_RAW

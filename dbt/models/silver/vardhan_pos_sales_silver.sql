@@ -1,0 +1,39 @@
+{{ config(
+    materialized='table',
+    unique_key='sales_hash_key',
+    schema='VARDHAN_SILVER'
+) }}
+
+WITH source_data AS (
+    SELECT
+        MD5(CONCAT_WS('||', 
+            COALESCE(TRIM(SPLIT_PART(STORE_ID, '-', 1)), ''), 
+            COALESCE(TRIM(BILL_NO), ''), 
+            COALESCE(LINE_NO::STRING, '')
+        )) AS SALES_HASH_KEY,
+        TRIM(UPPER(SPLIT_PART(STORE_ID, '-', 1))) AS STORE_ID,
+        TRIM(UPPER(BILL_NO)) AS BILL_NO,
+        TRY_CAST(LINE_NO AS INT) AS LINE_NO,
+        TRY_CAST(BILL_TS AS TIMESTAMP_NTZ) AS BILL_TS,
+        TRIM(UPPER(SKU)) AS SKU_CODE,
+        TRY_CAST(QTY AS INT) AS QTY,
+        TRY_CAST(UNIT_PRICE AS NUMBER(38,2)) AS UNIT_PRICE,
+        TRY_CAST(DISCOUNT_PCT AS NUMBER(38,2)) AS DISCOUNT_PCT,
+        ROUND(
+            TRY_CAST(QTY AS INT) * TRY_CAST(UNIT_PRICE AS NUMBER(38,2)) * (1 - COALESCE(TRY_CAST(DISCOUNT_PCT AS NUMBER(38,2)), 0) / 100.0), 
+            2
+        ) AS NET_AMOUNT,
+        TRIM(UPPER(BATCH_NO)) AS BATCH_NO,
+        TRY_CAST(EXPIRY_DATE AS DATE) AS EXPIRY_DATE,
+        SOURCE_FILE,
+        SOURCE_ROW_NUMBER,
+        INGESTED_AT AS BRONZE_LOADED_AT,
+        CURRENT_TIMESTAMP() AS SILVER_LOADED_AT
+    FROM {{ source('VARDHAN_BRONZE', 'VARDHAN_POS_SALES_RAW') }}
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY SPLIT_PART(STORE_ID, '-', 1), BILL_NO, LINE_NO 
+        ORDER BY INGESTED_AT DESC
+    ) = 1
+)
+
+SELECT * FROM source_data

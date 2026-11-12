@@ -9,3 +9,14 @@ terraform.tfvars
 
 # Packaging Artifacts
 *.zip
+# dbt artifacts & credentials
+target/
+dbt_packages/
+logs/
+logs_schedule/
+*.p8
+*.pem
+*.key
+*.pub
+profiles.yml
+.env

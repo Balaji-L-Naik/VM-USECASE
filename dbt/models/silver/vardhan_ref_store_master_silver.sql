@@ -1,0 +1,33 @@
+{{ config(
+    materialized='table',
+    unique_key='store_hash_key',
+    schema='VARDHAN_SILVER'
+) }}
+
+WITH source_data AS (
+    SELECT
+        MD5(TRIM(UPPER(STORE_ID))) AS STORE_HASH_KEY,
+        TRIM(UPPER(STORE_ID)) AS STORE_ID,
+        TRIM(STORE_NAME) AS STORE_NAME,
+        TRIM(CITY) AS CITY,
+        TRIM(AREA) AS AREA,
+        TRIM(AREA_MANAGER) AS MANAGER_NAME,
+        TRY_CAST(MANAGER_SINCE AS DATE) AS MANAGER_SINCE,
+        TRY_CAST(OPENED_ON AS DATE) AS OPENED_ON,
+        CASE 
+            WHEN TRIM(UPPER(IS_24H)) IN ('Y', 'YES', 'TRUE', '1') THEN TRUE 
+            WHEN TRIM(UPPER(IS_24H)) IN ('N', 'NO', 'FALSE', '0') THEN FALSE 
+            ELSE FALSE 
+        END AS IS_24H_FLAG,
+        TRIM(UPPER(STATUS)) AS STATUS,
+        SOURCE_FILE,
+        INGESTED_AT AS BRONZE_LOADED_AT,
+        CURRENT_TIMESTAMP() AS SILVER_LOADED_AT
+    FROM {{ source('VARDHAN_BRONZE', 'VARDHAN_REF_STORE_MASTER_RAW') }}
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY STORE_ID 
+        ORDER BY INGESTED_AT DESC
+    ) = 1
+)
+
+SELECT * FROM source_data
